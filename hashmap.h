@@ -9,7 +9,7 @@ HashMap *ht_init(int capacity);
 /* Insert into hash map */
 int ht_put(HashMap *ht, char *key, int value);
 /* Reomves entry */
-void ht_remove_entry(HashMap *ht, char *key);
+int ht_remove_entry(HashMap *ht, char *key);
 /* Checks if hash map is empty */
 int ht_is_empty(HashMap *ht);
 /* Print contents of hash map */

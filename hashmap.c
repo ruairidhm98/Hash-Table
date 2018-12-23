@@ -92,7 +92,6 @@ int ht_put(HashMap *ht, char *key, int value) {
     /* The space is already taken, so do a linear search to find the next free space */
     else {
         while(1) {
-
             /* Move along 1 (or start from the beginning) */
             idx = (idx + 1) % ht -> capacity;
             /* Free space has been found */
@@ -101,11 +100,48 @@ int ht_put(HashMap *ht, char *key, int value) {
                 ht -> buckets[idx].value = value;
                 break;
             }
-
         }
 
     }
     ht -> size++;
+
+    return 1;
+}
+
+/* Reomves entry, returns 1/0 for success/failure */
+int ht_remove_entry(HashMap *ht, char *key) {
+
+    char *tempkey;
+    int idx, tempidx;
+    
+    if (!ht -> size) {
+        fprintf(stderr, "Error: hash table is empty, cannot delete\n");
+        return 0;
+    }
+
+    idx = hash_function(key, ht -> size);
+    tempkey = ht -> buckets[idx].key;
+    /* Bucket has been found from hash function, just set key to NULL */
+    if (!strcmp(key, tempkey)) 
+        ht -> buckets[idx].key = NULL;
+    /* Else we must search for this key */
+    else {
+        tempidx = idx;
+        while (1) {
+            idx = (idx + 1) % ht -> capacity;
+            /* We have found the key */
+            if (!strcmp(key, tempkey)) {
+                ht -> buckets[idx].key = NULL;
+                break;
+            }
+            /* We are back to where we started, so key must not exist in table */
+            if (tempidx == idx) {
+                fprintf(stderr, "Error: key does not exist in hash table\n");
+                break;
+            }
+        }
+
+    }
 
     return 1;
 }
@@ -123,19 +159,10 @@ void ht_print(HashMap *ht) {
     }
     /* Loop over the bucket array, printing the key-value pairs that have value */
     for (i = 0; i < ht -> capacity; i++) {
-        if (i == ht -> capacity - 1) {
-            if (ht -> buckets[i].key) {
-                printf("<%s, %d>]\n", ht -> buckets[i].key, ht -> buckets[i].value);
-                return;
-            }
-            else {
-                printf("]\n");
-                return;
-            }
-        }
         if (ht -> buckets[i].key) printf("<%s, %d> ", ht -> buckets[i].key,
              ht -> buckets[i].value);
     } 
+    printf("]");
     
 }
 
