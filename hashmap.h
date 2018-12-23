@@ -13,7 +13,7 @@ void ht_remove_entry(HashMap *ht, char *key);
 /* Checks if hash map is empty */
 int ht_is_empty(HashMap *ht);
 /* Print contents of hash map */
-void ht_print_hash(HashMap *ht);
+void ht_print(HashMap *ht);
 /* Wipes hash map */
 void ht_deinit(HashMap *ht);
 

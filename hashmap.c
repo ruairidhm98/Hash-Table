@@ -30,7 +30,7 @@ static unsigned long hash_function(char *key, int capacity) {
     hash = 5381;
     int c;
 
-    while (c = *key++)
+    while ((c = *key++))
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
 
     return hash % capacity;
@@ -110,4 +110,32 @@ int ht_put(HashMap *ht, char *key, int value) {
     return 1;
 }
 
+/* Print contents of hash map */
+void ht_print(HashMap *ht) {
+
+    Bucket b;
+    int i;
+
+    printf("[");
+    if (!ht -> size) {
+        printf("]\n");
+        return;
+    }
+    /* Loop over the bucket array, printing the key-value pairs that have value */
+    for (i = 0; i < ht -> capacity; i++) {
+        if (i == ht -> capacity - 1) {
+            if (ht -> buckets[i].key) {
+                printf("<%s, %d>]\n", ht -> buckets[i].key, ht -> buckets[i].value);
+                return;
+            }
+            else {
+                printf("]\n");
+                return;
+            }
+        }
+        if (ht -> buckets[i].key) printf("<%s, %d> ", ht -> buckets[i].key,
+             ht -> buckets[i].value);
+    } 
+    
+}
 
