@@ -5,7 +5,6 @@
  ************************************************/
 
 #include <stdio.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include "hashmap.h"
@@ -68,6 +67,8 @@ HashMap *ht_init(int capacity) {
 int ht_put(HashMap *ht, char *key, int value) {
 
     Bucket newBucket;
+    char *tempKey;
+    int idx;
 
     /* If the hash table is full, don't insert */
     if (!ht || ht -> size == ht -> capacity) {
@@ -77,9 +78,36 @@ int ht_put(HashMap *ht, char *key, int value) {
     newBucket.key = key;
     newBucket.value = value;
     
-    
+    /* Compute the index */
+    idx = (int) hash_function(key, ht -> capacity);
+    tempKey = ht -> buckets[idx].key;
+    /* If the space is empty, insert into the array and we are done */
+    if (!tempKey) {
+        ht -> buckets[idx].key = key;
+        ht -> buckets[idx].value = value;
+    }
+    /* If there is a duplicate key, then overwrite it */
+    else if (!strcmp(tempKey, key)) 
+        ht -> buckets[idx].value = value;
+    /* The space is already taken, so do a linear search to find the next free space */
+    else {
+        while(1) {
 
+            /* Move along 1 (or start from the beginning) */
+            idx = (idx + 1) % ht -> capacity;
+            /* Free space has been found */
+            if (!ht -> buckets[idx].key) {
+                ht -> buckets[idx].key = key;
+                ht -> buckets[idx].value = value;
+                break;
+            }
+
+        }
+
+    }
+    ht -> size++;
 
     return 1;
 }
+
 

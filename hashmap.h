@@ -11,7 +11,7 @@ int ht_put(HashMap *ht, char *key, int value);
 /* Reomves entry */
 void ht_remove_entry(HashMap *ht, char *key);
 /* Checks if hash map is empty */
-bool ht_is_empty(HashMap *ht);
+int ht_is_empty(HashMap *ht);
 /* Print contents of hash map */
 void ht_print_hash(HashMap *ht);
 /* Wipes hash map */
