@@ -23,6 +23,20 @@ struct hashmap {
     Bucket *buckets;
 };
 
+/* Hash function used to compute index into bucket array */
+static unsigned long hash_function(char *key, int capacity) {
+    
+    unsigned long hash;
+    
+    hash = 5381;
+    int c;
+
+    while (c = *key++)
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash % capacity;
+}
+
 /* Returns a pointer to an empty hash table if successfull, NULL otherwise */
 HashMap *ht_init(int capacity) {
 
@@ -49,3 +63,23 @@ HashMap *ht_init(int capacity) {
 
     return ht;
 }
+
+/* Insert into hash map, returns 1/0 for success failure */
+int ht_put(HashMap *ht, char *key, int value) {
+
+    Bucket newBucket;
+
+    /* If the hash table is full, don't insert */
+    if (!ht || ht -> size == ht -> capacity) {
+        fprintf(stderr, "Error: can't insert into hash table\n");
+        return 0;
+    }
+    newBucket.key = key;
+    newBucket.value = value;
+    
+    
+
+
+    return 1;
+}
+
