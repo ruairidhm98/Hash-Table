@@ -1,35 +1,43 @@
 /************************************************
- * HashTable which maps a string to an int        *
+ * Thread safe TSHashTable which maps a string to an int        *
  * Uses linear probing for collision handling   *
  *                                              *
  ************************************************/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "hashtable.h"
+#include <pthread.h>
+#include "tshashtable.h"
 
+#define COND_ERROR     "Error: condition variable failed to create\n"
 #define MALLOC_FAILURE "Error: memory allocation failed\n"
+#define MUTEX_ERROR    "Error: mutex failed ot create\n"
+#define NULL_VALUE     "Error: hash table is NULL\n"
 #define DELETE_FAILURE "Error: hash table is empty\n"
 #define KEY_ERROR      "Error: key is not in table\n"
 
 /* Entry in bucket array */
 struct bucket {
-    char *key;
-    int value;
+    char *key; // key which maps to a value
+    int value; // the value being mapped to
 };
 
 /* Structure that holds buckets */
-struct hashtable {
-    int size;
-    int capacity;
-    Bucket *buckets;
+struct ts_hashtable {
+    int done; // boolean value which will tell us if we are done (to avoid deadlock)
+    int size; // size of hash table
+    int capacity; // capacity of the hash table
+    Bucket *buckets; // the bucket array
+    pthread_mutex_t mutex; // mutex used to protect shared data
+    pthread_cond_t insert; // condtion variable uesd in inserting
+    pthread_cond_t delete; // condition variable used in deleting
 };
 
 /* An iterator for the hash map */
-struct hashtable_iterator {
-    unsigned long next;
-    HashTable *ht;
+struct ts_hashtable_iterator {
+    TSHashTable *ht; // the hash table
+    unsigned long next; // index of where to start from next in the hash table
+    pthread_mutex_t mutex; // mutex used to protect shared data
 };
 
 /* Hash function used to compute index into bucket array */
@@ -47,12 +55,12 @@ static unsigned long hash_function(char *key, int capacity) {
 }
 
 /* Returns a pointer to an empty hash table if successfull, NULL otherwise */
-HashTable *ht_init(int capacity) {
+TSHashTable *ht_init(int capacity) {
 
-    HashTable *ht;
+    TSHashTable *ht;
     int i;
 
-    ht = (HashTable *) malloc(sizeof(HashTable));
+    ht = (TSHashTable *) malloc(sizeof(TSHashTable));
     /* Print error message and return NULL if memory allocation fails */
     if (!ht) {
         fprintf(stderr, MALLOC_FAILURE);
@@ -60,11 +68,38 @@ HashTable *ht_init(int capacity) {
         ht = NULL;
         return ht;
     }
+    ht -> done = 0;
     ht -> size = 0;
     ht -> capacity = capacity;
     ht -> buckets = (Bucket *) calloc(capacity, sizeof(Bucket));
     if (!ht -> buckets) {
         fprintf(stderr, MALLOC_FAILURE);
+        free((void *) ht -> buckets);
+        free((void *) ht);
+        ht = NULL;
+        return ht;
+    }
+    /* Print error message and return NULL if mutex fails to create */
+    if (pthread_mutex_init(&(ht -> mutex), NULL)) {
+        fprintf(stderr, MUTEX_ERROR);
+        free((void *) ht -> buckets);
+        free((void *) ht);
+        ht = NULL;
+        return ht;
+    }
+    /* Print error message and return NULL if condition variable fails to create */
+    if (pthread_cond_init(&(ht -> insert), NULL)) {
+        fprintf(stderr, COND_ERROR);
+        pthread_mutex_destroy(&(ht -> mutex));
+        free((void *) ht -> buckets);
+        free((void *) ht);
+        ht = NULL;
+        return ht;
+    }
+    if (pthread_cond_init(&(ht -> delete), NULL)) {
+        fprintf(stderr, COND_ERROR);
+        pthread_mutex_destroy(&(ht -> mutex));
+        pthread_cond_destroy(&(ht -> insert));
         free((void *) ht -> buckets);
         free((void *) ht);
         ht = NULL;
@@ -74,16 +109,22 @@ HashTable *ht_init(int capacity) {
 }
 
 /* Insert into hash map, returns 1/0 for success failure */
-int ht_put(HashTable *ht, char *key, int value) {
+int ht_put(TSHashTable *ht, char *key, int value) {
 
     Bucket newBucket;
     char *tempKey;
     int idx;
 
-    /* If the hash table is full, don't insert */
-    if (!ht || ht -> size == ht -> capacity) {
-        fprintf(stderr, MALLOC_FAILURE);
+    if (!ht) {
+        fprintf(stderr, NULL_VALUE);
         return 0;
+    }
+    /* Critical region */
+    pthread_mutex_lock(&(ht -> mutex));
+    /* If the hash table is full, don't insert */
+    while (ht -> size == ht -> capacity && !(ht -> done)) {
+        printf("== Hash Table is full ==");
+        pthread_cond_wait(&(ht -> insert), &(ht -> mutex));
     }
     newBucket.key = key;
     newBucket.value = value;
@@ -97,8 +138,7 @@ int ht_put(HashTable *ht, char *key, int value) {
         ht -> buckets[idx].value = value;
     }
     /* If there is a duplicate key, then overwrite it */
-    else if (!strcmp(tempKey, key)) 
-        ht -> buckets[idx].value = value;
+    else if (!strcmp(tempKey, key)) ht -> buckets[idx].value = value;
     /* The space is already taken, so do a linear search to find the next free space */
     else {
         while(1) {
@@ -114,17 +154,19 @@ int ht_put(HashTable *ht, char *key, int value) {
 
     }
     ht -> size++;
+    pthread_mutex_unlock(&(ht -> mutex));
+    pthread_cond_signal(&(ht -> delete));
 
     return 1;
 }
 
 /* Reomves entry, returns 1/0 for success/failure */
-int ht_remove_entry(HashTable *ht, char *key) {
+int ht_remove_entry(TSHashTable *ht, char *key) {
 
-    char *tempkey;
     int idx, tempidx;
+    char *tempkey;
     
-    if (!ht -> size) {
+    if (!ht || !ht -> size) {
         fprintf(stderr, DELETE_FAILURE);
         return 0;
     }
@@ -163,7 +205,7 @@ int ht_remove_entry(HashTable *ht, char *key) {
 }
 
 /* Returns the keys of the hash */
-char **ht_keys(HashTable *ht) {
+char **ht_keys(TSHashTable *ht) {
 
     char **theKeys;
     int i, j;
@@ -193,7 +235,7 @@ char **ht_keys(HashTable *ht) {
 }
 
 /* Print contents of hash map */
-void ht_print(HashTable *ht) {
+void ht_print(TSHashTable *ht) {
 
     Bucket b;
     int i;
@@ -213,10 +255,10 @@ void ht_print(HashTable *ht) {
 }
 
 /* Returns true if the hash table is empty */
-int ht_is_empty(HashTable *ht) { return ht ? ht -> size == 0 : 0; }
+int ht_is_empty(TSHashTable *ht) { return ht ? ht -> size == 0 : 0; }
 
 /* Destroys a hash table objects */
-void ht_destroy(HashTable *ht) {
+void ht_destroy(TSHashTable *ht) {
     if(ht) {
         free((void *) ht -> buckets);
         free((void *) ht);
@@ -225,11 +267,11 @@ void ht_destroy(HashTable *ht) {
 }
 
 /* Initialises hash map iterator */
-HashTableIterator *ht_iter_init(HashTable *ht) {
+TSHashTableIterator *ht_iter_init(TSHashTable *ht) {
 
-    HashTableIterator *hti;
+    TSHashTableIterator *hti;
 
-    hti = (HashTableIterator *) malloc(sizeof(HashTableIterator));  
+    hti = (TSHashTableIterator *) malloc(sizeof(TSHashTableIterator));  
     if (!hti) {
         fprintf(stderr, MALLOC_FAILURE);
         free((void *) hti);
@@ -243,7 +285,7 @@ HashTableIterator *ht_iter_init(HashTable *ht) {
 }  
 
 /* Returns the next available bucket in the hash table */
-Bucket *ht_iter_next(HashTableIterator *hti) {
+Bucket *ht_iter_next(TSHashTableIterator *hti) {
 
     Bucket *bucket, *buckets;
     int i, size, capacity;
@@ -270,13 +312,13 @@ Bucket *ht_iter_next(HashTableIterator *hti) {
 }
 
 /* Destorys an iterator object */
-void ht_iter_destroy(HashTableIterator *hti) { free((void *) hti); }
+void ht_iter_destroy(TSHashTableIterator *hti) { free((void *) hti); }
 
 
 int main() {
 
-    HashTableIterator *hti;
-    HashTable *ht;
+    TSHashTableIterator *hti;
+    TSHashTable *ht;
     Bucket *temp;
     char **keys;
     int i;
