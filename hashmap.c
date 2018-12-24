@@ -9,6 +9,10 @@
 #include <string.h>
 #include "hashmap.h"
 
+#define MALLOC_FAILURE "Error: memory allocation failed\n"
+#define DELETE_FAILURE "Error: hash table is empty\n"
+#define KEY_ERROR      "Error: key is not in table\n"
+
 /* Entry in bucket array */
 struct bucket {
     char *key;
@@ -50,7 +54,7 @@ HashMap *ht_init(int capacity) {
     ht = (HashMap *) malloc(sizeof(HashMap));
     /* Print error message and return NULL if memory allocation fails */
     if (!ht) {
-        fprintf(stderr, "Error: memory allocation failed\n");
+        fprintf(stderr, MALLOC_FAILURE);
         free((void *) ht);
         ht = NULL;
         return ht;
@@ -59,7 +63,7 @@ HashMap *ht_init(int capacity) {
     ht -> capacity = capacity;
     ht -> buckets = (Bucket *) calloc(capacity, sizeof(Bucket));
     if (!ht -> buckets) {
-        fprintf(stderr, "Error: memory allocation failed\n");
+        fprintf(stderr, MALLOC_FAILURE);
         free((void *) ht -> buckets);
         free((void *) ht);
         ht = NULL;
@@ -77,7 +81,7 @@ int ht_put(HashMap *ht, char *key, int value) {
 
     /* If the hash table is full, don't insert */
     if (!ht || ht -> size == ht -> capacity) {
-        fprintf(stderr, "Error: can't insert into hash table\n");
+        fprintf(stderr, MALLOC_FAILURE);
         return 0;
     }
     newBucket.key = key;
@@ -120,7 +124,7 @@ int ht_remove_entry(HashMap *ht, char *key) {
     int idx, tempidx;
     
     if (!ht -> size) {
-        fprintf(stderr, "Error: hash table is empty, cannot delete\n");
+        fprintf(stderr, DELETE_FAILURE);
         return 0;
     }
 
@@ -147,7 +151,7 @@ int ht_remove_entry(HashMap *ht, char *key) {
             }
             /* We are back to where we started, so key must not exist in table */
             if (tempidx == idx) {
-                fprintf(stderr, "Error: key does not exist in hash table\n");
+                fprintf(stderr, KEY_ERROR);
                 break;
             }
         }
@@ -155,6 +159,36 @@ int ht_remove_entry(HashMap *ht, char *key) {
     }
 
     return 1;
+}
+
+/* Returns the keys of the hash */
+char **ht_keys(HashMap *ht) {
+
+    char **theKeys;
+    int i, j;
+
+    theKeys = (char **) malloc(sizeof(char *) * ht -> size);
+    if (!theKeys) {
+        fprintf(stderr, MALLOC_FAILURE);
+        free((void *) theKeys);
+        theKeys = NULL;
+        return theKeys;
+    }
+    /* Loop over the hash table and add the keys to theKeys which are not NULL */
+    for (i = 0, j = 0; i < ht -> capacity; i++) 
+        if (ht -> buckets[i].key) {
+            theKeys[i] = (char *) malloc(sizeof(ht -> buckets[i].key));
+            if (!theKeys[i]) {
+                fprintf(stderr, MALLOC_FAILURE);
+                for (i = 0; i < j; i++) free((void *) theKeys[i]);
+                free((void *) theKeys);
+                theKeys = NULL;
+                return theKeys;
+            }
+            theKeys[j++] = ht -> buckets[i].key;
+        }
+
+    return theKeys;
 }
 
 /* Print contents of hash map */
@@ -192,13 +226,22 @@ void ht_destroy(HashMap *ht) {
 int main() {
 
     HashMap *ht;
+    char **keys;
+    int i;
 
     ht = ht_init(10);
     ht_put(ht, "hello", 1);
+    ht_put(ht, "there", 2);
+    ht_put(ht, "ther", 6);
+    ht_put(ht, "the", 5);
+    ht_put(ht, "theree", 4);
+    ht_put(ht, "th", 3);
     ht_print(ht);
-    ht_remove_entry(ht, "hello");
-    ht_print(ht);
+    keys = ht_keys(ht);
+    for (i = 0; i < ht -> size; i++) printf("%s\n", keys[i]);
     ht_destroy(ht);
+    free((void *) keys);
+    for (i = 0; i < ht -> size; i++) free((void *) keys[i]);
 
     return 0;
 }
