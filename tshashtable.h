@@ -17,6 +17,10 @@ char **ht_keys(TSHashTable *ht);
 int ht_is_empty(TSHashTable *ht);
 /* Print contents of hash map */
 void ht_print(TSHashTable *ht);
+/* Sets done to be true so we know are finished */
+void ht_set_done_true(TSHashTable *ht);
+/* Sets done to be false so we know there is more work to do */
+void ht_set_done_false(TSHashTable *ht);
 /* Wipes hash map */
 void ht_destory(TSHashTable *ht);
 /* Initialises hash map iterator */

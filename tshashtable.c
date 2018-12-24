@@ -10,10 +10,10 @@
 #include "tshashtable.h"
 
 #define COND_ERROR     "Error: condition variable failed to create\n"
-#define MALLOC_FAILURE "Error: memory allocation failed\n"
+#define MALLOC_ERROR   "Error: memory allocation failed\n"
 #define MUTEX_ERROR    "Error: mutex failed ot create\n"
 #define NULL_VALUE     "Error: hash table is NULL\n"
-#define DELETE_FAILURE "Error: hash table is empty\n"
+#define DELETE_ERROR   "Error: hash table is empty\n"
 #define KEY_ERROR      "Error: key is not in table\n"
 
 /* Entry in bucket array */
@@ -49,7 +49,8 @@ static unsigned long hash_function(char *key, int capacity) {
     int c;
 
     while ((c = *key++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+        /* hash * 33 + c */
+        hash = ((hash << 5) + hash) + c; 
 
     return hash % capacity;
 }
@@ -63,7 +64,7 @@ TSHashTable *ht_init(int capacity) {
     ht = (TSHashTable *) malloc(sizeof(TSHashTable));
     /* Print error message and return NULL if memory allocation fails */
     if (!ht) {
-        fprintf(stderr, MALLOC_FAILURE);
+        fprintf(stderr, MALLOC_ERROR);
         free((void *) ht);
         ht = NULL;
         return ht;
@@ -73,7 +74,7 @@ TSHashTable *ht_init(int capacity) {
     ht -> capacity = capacity;
     ht -> buckets = (Bucket *) calloc(capacity, sizeof(Bucket));
     if (!ht -> buckets) {
-        fprintf(stderr, MALLOC_FAILURE);
+        fprintf(stderr, MALLOC_ERROR);
         free((void *) ht -> buckets);
         free((void *) ht);
         ht = NULL;
@@ -121,7 +122,7 @@ int ht_put(TSHashTable *ht, char *key, int value) {
     }
     /* Critical region */
     pthread_mutex_lock(&(ht -> mutex));
-    /* If the hash table is full, don't insert */
+    /* Wait until there is an availabe space in the hash table to insert a new bucket */
     while (ht -> size == ht -> capacity && !(ht -> done)) {
         printf("== Hash Table is full ==");
         pthread_cond_wait(&(ht -> insert), &(ht -> mutex));
@@ -166,9 +167,15 @@ int ht_remove_entry(TSHashTable *ht, char *key) {
     int idx, tempidx;
     char *tempkey;
     
-    if (!ht || !ht -> size) {
-        fprintf(stderr, DELETE_FAILURE);
+    if (!ht) {
+        fprintf(stderr, NULL_VALUE);
         return 0;
+    }
+    pthread_mutex_lock(&(ht -> mutex));
+    /* Wait until there is something to be deleted */
+    while(!(ht -> size) && !(ht -> done)) {
+        printf("== Hash Table is empty ==");
+        pthread_cond_wait(&(ht -> delete), &(ht -> mutex));
     }
 
     idx = (int) hash_function(key, ht -> capacity);
@@ -200,6 +207,7 @@ int ht_remove_entry(TSHashTable *ht, char *key) {
         }
 
     }
+    pthread_mutex_unlock(&(ht -> mutex));
 
     return 1;
 }
@@ -212,24 +220,30 @@ char **ht_keys(TSHashTable *ht) {
 
     theKeys = (char **) malloc(sizeof(char *) * ht -> size);
     if (!theKeys) {
-        fprintf(stderr, MALLOC_FAILURE);
+        fprintf(stderr, MALLOC_ERROR);
         free((void *) theKeys);
         theKeys = NULL;
         return theKeys;
     }
+    pthread_mutex_lock(&(ht -> mutex));
     /* Loop over the hash table and add the keys to theKeys which are not NULL */
     for (i = 0, j = 0; i < ht -> capacity; i++) 
         if (ht -> buckets[i].key) {
             theKeys[i] = (char *) malloc(sizeof(ht -> buckets[i].key));
             if (!theKeys[i]) {
-                fprintf(stderr, MALLOC_FAILURE);
-                for (i = 0; i < j; i++) free((void *) theKeys[i]);
+                fprintf(stderr, MALLOC_ERROR);
+                /* Delete all pointers allocated to avoid memory leaks */
+                for (i = 0; i < j; i++) {
+                    free((void *) theKeys[i]);
+                    theKeys[i] = NULL;
+                }
                 free((void *) theKeys);
                 theKeys = NULL;
                 return theKeys;
             }
             theKeys[j++] = ht -> buckets[i].key;
         }
+    pthread_mutex_unlock(&(ht -> mutex));
 
     return theKeys;
 }
@@ -241,21 +255,29 @@ void ht_print(TSHashTable *ht) {
     int i;
 
     printf("[");
-    if (!ht -> size) {
+    pthread_mutex_lock(&(ht -> mutex));
+    if (!ht || !ht -> size) {
         printf("]\n");
         return;
     }
     /* Loop over the bucket array, printing the key-value pairs that have value */
-    for (i = 0; i < ht -> capacity; i++) {
+    for (i = 0; i < ht -> capacity; i++) 
         if (ht -> buckets[i].key) 
             printf(" <%s, %d> ", ht -> buckets[i].key, ht -> buckets[i].value);
-    } 
+    
+    pthread_mutex_unlock(&(ht -> mutex));
     printf("]\n");
     
 }
 
 /* Returns true if the hash table is empty */
 int ht_is_empty(TSHashTable *ht) { return ht ? ht -> size == 0 : 0; }
+
+/* Set done to be true so we can notify threads */
+void ht_set_done_true(TSHashTable *ht) { ht ? ht -> done = 1 : 0; }
+
+/* Sets done to be false so we can notify threads there is more work */
+void ht_set_done_false(TSHashTable *ht) { ht ? ht -> done = 0 : 0; }
 
 /* Destroys a hash table objects */
 void ht_destroy(TSHashTable *ht) {
@@ -273,13 +295,19 @@ TSHashTableIterator *ht_iter_init(TSHashTable *ht) {
 
     hti = (TSHashTableIterator *) malloc(sizeof(TSHashTableIterator));  
     if (!hti) {
-        fprintf(stderr, MALLOC_FAILURE);
+        fprintf(stderr, MALLOC_ERROR);
         free((void *) hti);
         hti = NULL;
         return hti;
     }
     hti -> next = 0;
     hti -> ht = ht;
+    if (pthread_mutex_init(&(hti -> mutex), NULL)) {
+        fprintf(stderr, MUTEX_ERROR);
+        free((void *) hti);
+        hti = NULL;
+    }
+    pthread_mutex_lock(&(hti -> mutex));
 
     return hti;
 }  
