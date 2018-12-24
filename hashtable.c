@@ -1,5 +1,5 @@
 /************************************************
- * Hashmap which maps a string to an int        *
+ * HashTable which maps a string to an int        *
  * Uses linear probing for collision handling   *
  *                                              *
  ************************************************/
@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "hashmap.h"
+#include "hashtable.h"
 
 #define MALLOC_FAILURE "Error: memory allocation failed\n"
 #define DELETE_FAILURE "Error: hash table is empty\n"
@@ -20,14 +20,14 @@ struct bucket {
 };
 
 /* Structure that holds buckets */
-struct hashmap {
+struct HashTable {
     int size;
     int capacity;
     Bucket *buckets;
 };
 
 /* An iterator for the hash map */
-struct hashmap_iterator {
+struct HashTable_iterator {
 
 };
 
@@ -46,12 +46,12 @@ static unsigned long hash_function(char *key, int capacity) {
 }
 
 /* Returns a pointer to an empty hash table if successfull, NULL otherwise */
-HashMap *ht_init(int capacity) {
+HashTable *ht_init(int capacity) {
 
-    HashMap *ht;
+    HashTable *ht;
     int i;
 
-    ht = (HashMap *) malloc(sizeof(HashMap));
+    ht = (HashTable *) malloc(sizeof(HashTable));
     /* Print error message and return NULL if memory allocation fails */
     if (!ht) {
         fprintf(stderr, MALLOC_FAILURE);
@@ -73,7 +73,7 @@ HashMap *ht_init(int capacity) {
 }
 
 /* Insert into hash map, returns 1/0 for success failure */
-int ht_put(HashMap *ht, char *key, int value) {
+int ht_put(HashTable *ht, char *key, int value) {
 
     Bucket newBucket;
     char *tempKey;
@@ -118,7 +118,7 @@ int ht_put(HashMap *ht, char *key, int value) {
 }
 
 /* Reomves entry, returns 1/0 for success/failure */
-int ht_remove_entry(HashMap *ht, char *key) {
+int ht_remove_entry(HashTable *ht, char *key) {
 
     char *tempkey;
     int idx, tempidx;
@@ -162,7 +162,7 @@ int ht_remove_entry(HashMap *ht, char *key) {
 }
 
 /* Returns the keys of the hash */
-char **ht_keys(HashMap *ht) {
+char **ht_keys(HashTable *ht) {
 
     char **theKeys;
     int i, j;
@@ -192,7 +192,7 @@ char **ht_keys(HashMap *ht) {
 }
 
 /* Print contents of hash map */
-void ht_print(HashMap *ht) {
+void ht_print(HashTable *ht) {
 
     Bucket b;
     int i;
@@ -212,10 +212,10 @@ void ht_print(HashMap *ht) {
 }
 
 /* Returns true if the hash table is empty */
-int ht_is_empty(HashMap *ht) { return ht ? ht -> size == 0 : 0; }
+int ht_is_empty(HashTable *ht) { return ht ? ht -> size == 0 : 0; }
 
 /* Destroys a hash table objects */
-void ht_destroy(HashMap *ht) {
+void ht_destroy(HashTable *ht) {
     if(ht) {
         free((void *) ht -> buckets);
         free((void *) ht);
@@ -225,7 +225,7 @@ void ht_destroy(HashMap *ht) {
 
 int main() {
 
-    HashMap *ht;
+    HashTable *ht;
     char **keys;
     int i;
 
