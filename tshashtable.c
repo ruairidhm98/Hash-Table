@@ -1,8 +1,9 @@
-/************************************************
- * Thread safe TSHashTable which maps a string to an int  *
- * Uses linear probing for collision handling   *
- *                                              *
- ************************************************/
+/*************************************************
+ * - Thread safe TSHashTable which maps a string *
+ *   to an int                                   *
+ * - Uses linear probing for collision handling  *
+ *                                               *
+ *************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
