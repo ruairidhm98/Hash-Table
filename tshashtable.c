@@ -44,12 +44,11 @@ struct ts_hashtable_iterator {
 static unsigned long hash_function(char *key, int capacity) {
     
     unsigned long hash;
-    
-    hash = 5381;
     int c;
 
+    hash = 5381;
+
     while ((c = *key++))
-        /* hash * 33 + c */
         hash = ((hash << 5) + hash) + c; 
 
     return hash % capacity;
@@ -165,7 +164,7 @@ int ht_put(TSHashTable *ht, char *key, int value) {
 int ht_remove_entry(TSHashTable *ht, char *key) {
 
     int idx, tempidx;
-    char *tempkey;
+    char *tempKey;
     
     if (!ht) {
         fprintf(stderr, NULL_VALUE);
@@ -177,11 +176,10 @@ int ht_remove_entry(TSHashTable *ht, char *key) {
         printf("== Hash Table is empty ==");
         pthread_cond_wait(&(ht -> delete), &(ht -> mutex));
     }
-
     idx = (int) hash_function(key, ht -> capacity);
-    tempkey = ht -> buckets[idx].key;
+    tempKey = ht -> buckets[idx].key;
     /* Bucket has been found from hash function, just set key to NULL */
-    if (tempkey && !strcmp(key, tempkey)) {
+    if (tempKey && !strcmp(key, tempKey)) {
         ht -> buckets[idx].key = NULL;
         ht -> size--;
     }
@@ -190,10 +188,10 @@ int ht_remove_entry(TSHashTable *ht, char *key) {
         tempidx = idx;
         while (1) {
             idx = (idx + 1) % ht -> capacity;
-            tempkey = ht -> buckets[idx].key;
-            if (tempkey) {
+            tempKey = ht -> buckets[idx].key;
+            if (tempKey) {
                 /* We have found the key */
-                if (!strcmp(key, tempkey)) {
+                if (!strcmp(key, tempKey)) {
                     ht -> buckets[idx].key = NULL;
                     ht -> size--;
                     break;
@@ -205,7 +203,6 @@ int ht_remove_entry(TSHashTable *ht, char *key) {
                 break;
             }
         }
-
     }
     pthread_mutex_unlock(&(ht -> mutex));
 
@@ -251,37 +248,52 @@ char **ht_keys(TSHashTable *ht) {
 /* Print contents of hash map */
 void ht_print(TSHashTable *ht) {
 
+    int i, value;
+    char *key;
     Bucket b;
-    int i;
 
     printf("[");
+    if (!ht) {
+        fprintf(stderr, NULL_VALUE);
+    }
     pthread_mutex_lock(&(ht -> mutex));
-    if (!ht || !ht -> size) {
+    if (!ht -> size) {
         printf("]\n");
         return;
     }
     /* Loop over the bucket array, printing the key-value pairs that have value */
     for (i = 0; i < ht -> capacity; i++) 
-        if (ht -> buckets[i].key) 
-            printf(" <%s, %d> ", ht -> buckets[i].key, ht -> buckets[i].value);
-    
+        if (ht -> buckets[i].key) {
+            key = ht -> buckets[i].key;
+            value = ht -> buckets[i].value;
+            printf(" <%s, %d> ", key, value);
+        }
     pthread_mutex_unlock(&(ht -> mutex));
     printf("]\n");
     
 }
 
 /* Returns true if the hash table is empty */
-int ht_is_empty(TSHashTable *ht) { return ht ? ht -> size == 0 : 0; }
+int ht_is_empty(TSHashTable *ht) { 
+    int result;
+    pthread_mutex_lock(&(ht -> mutex));
+    result = ht ? ht -> size == 0 : 0;
+    pthread_mutex_unlock(&(ht -> mutex));
+    return result;
+}
 
 /* Set done to be true so we can notify threads */
-void ht_set_done_true(TSHashTable *ht) { ht ? ht -> done = 1 : 0; }
+void ht_set_done_true(TSHashTable *ht) { ht ? ht -> done = 1 : NULL; }
 
 /* Sets done to be false so we can notify threads there is more work */
-void ht_set_done_false(TSHashTable *ht) { ht ? ht -> done = 0 : 0; }
+void ht_set_done_false(TSHashTable *ht) { ht ? ht -> done = 0 : NULL; }
 
 /* Destroys a hash table objects */
 void ht_destroy(TSHashTable *ht) {
     if(ht) {
+        pthread_mutex_destroy(&(ht -> mutex));
+        pthread_cond_destroy(&(ht -> insert));
+        pthread_cond_destroy(&(ht -> delete));
         free((void *) ht -> buckets);
         free((void *) ht);
         ht = NULL;
@@ -340,7 +352,14 @@ Bucket *ht_iter_next(TSHashTableIterator *hti) {
 }
 
 /* Destorys an iterator object */
-void ht_iter_destroy(TSHashTableIterator *hti) { free((void *) hti); }
+void ht_iter_destroy(TSHashTableIterator *hti) { 
+    if (hti) {
+        pthread_mutex_unlock(&(hti -> mutex));
+        pthread_mutex_destroy(&(hti->mutex));
+        free((void *) hti);
+        hti = NULL;
+    }
+}
 
 
 int main() {
