@@ -15,6 +15,6 @@ int ht_is_empty(HashMap *ht);
 /* Print contents of hash map */
 void ht_print(HashMap *ht);
 /* Wipes hash map */
-void ht_deinit(HashMap *ht);
+void ht_destory(HashMap *ht);
 
 #endif

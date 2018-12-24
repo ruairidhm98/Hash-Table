@@ -119,7 +119,7 @@ int ht_remove_entry(HashMap *ht, char *key) {
         return 0;
     }
 
-    idx = hash_function(key, ht -> size);
+    idx = (int) hash_function(key, ht -> capacity);
     tempkey = ht -> buckets[idx].key;
     /* Bucket has been found from hash function, just set key to NULL */
     if (!strcmp(key, tempkey)) 
@@ -142,6 +142,7 @@ int ht_remove_entry(HashMap *ht, char *key) {
         }
 
     }
+    ht -> size--;
 
     return 1;
 }
@@ -159,10 +160,33 @@ void ht_print(HashMap *ht) {
     }
     /* Loop over the bucket array, printing the key-value pairs that have value */
     for (i = 0; i < ht -> capacity; i++) {
-        if (ht -> buckets[i].key) printf("<%s, %d> ", ht -> buckets[i].key,
-             ht -> buckets[i].value);
+        if (ht -> buckets[i].key) 
+            printf(" <%s, %d> ", ht -> buckets[i].key, ht -> buckets[i].value);
     } 
-    printf("]");
+    printf("]\n");
     
+}
+
+/* Destroys a hash table objects */
+void ht_destroy(HashMap *ht) {
+    if(ht) {
+        free((void *) ht -> buckets);
+        free((void *) ht);
+        ht = NULL;
+    }
+}
+
+int main() {
+
+    HashMap *ht;
+
+    ht = ht_init(10);
+    ht_put(ht, "hello", 1);
+    ht_print(ht);
+    ht_remove_entry(ht, "hello");
+    ht_print(ht);
+    ht_destroy(ht);
+
+    return 0;
 }
 
