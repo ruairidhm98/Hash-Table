@@ -1,6 +1,6 @@
-CC=gcc
+CC=clang
 EXE=test
-CFLAGS=-Wall -std=c99
+CFLAGS=-Werror -Wall 
 OBJ=hashmap.o
 CFILE=hashmap.c
 

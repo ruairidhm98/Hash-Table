@@ -122,17 +122,23 @@ int ht_remove_entry(HashMap *ht, char *key) {
     idx = (int) hash_function(key, ht -> capacity);
     tempkey = ht -> buckets[idx].key;
     /* Bucket has been found from hash function, just set key to NULL */
-    if (!strcmp(key, tempkey)) 
+    if (tempkey && !strcmp(key, tempkey)) {
         ht -> buckets[idx].key = NULL;
+        ht -> size--;
+    }
     /* Else we must search for this key */
     else {
         tempidx = idx;
         while (1) {
             idx = (idx + 1) % ht -> capacity;
-            /* We have found the key */
-            if (!strcmp(key, tempkey)) {
-                ht -> buckets[idx].key = NULL;
-                break;
+            tempkey = ht -> buckets[idx].key;
+            if (tempkey) {
+                /* We have found the key */
+                if (!strcmp(key, tempkey)) {
+                    ht -> buckets[idx].key = NULL;
+                    ht -> size--;
+                    break;
+                }
             }
             /* We are back to where we started, so key must not exist in table */
             if (tempidx == idx) {
@@ -142,7 +148,6 @@ int ht_remove_entry(HashMap *ht, char *key) {
         }
 
     }
-    ht -> size--;
 
     return 1;
 }
