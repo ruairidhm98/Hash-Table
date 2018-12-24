@@ -13,9 +13,9 @@
 #define COND_ERROR     "Error: condition variable failed to create\n"
 #define MALLOC_ERROR   "Error: memory allocation failed\n"
 #define MUTEX_ERROR    "Error: mutex failed ot create\n"
-#define NULL_VALUE     "Error: hash table is NULL\n"
 #define DELETE_ERROR   "Error: hash table is empty\n"
 #define KEY_ERROR      "Error: key is not in table\n"
+#define NULL_VALUE     "Error: hash table is NULL\n"
 
 /* Entry in bucket array */
 struct bucket {
