@@ -2,8 +2,8 @@
 #define _HASH_MAP_
 
 typedef struct bucket Bucket;
-typedef struct HashTable HashTable;
-typedef struct HashTable_iterator HashTableIterator;
+typedef struct hashtable HashTable;
+typedef struct hashtable_iterator HashTableIterator;
 
 /* Initialasies hash map*/
 HashTable *ht_init(int capacity);
@@ -20,10 +20,10 @@ void ht_print(HashTable *ht);
 /* Wipes hash map */
 void ht_destory(HashTable *ht);
 /* Initialises hash map iterator */
-HashTableIterator *ht_iterator_init(HashTable *ht);
+HashTableIterator *ht_iter_init(HashTable *ht);
 /* Returns the next bucket in the array */
-Bucket ht_iterator_next(HashTableIterator *hti);
+Bucket *ht_iter_next(HashTableIterator *hti);
 /* Destorys the iterator */
-void ht_iterator_destroy(HashTableIterator *hti);
+void ht_iter_destroy(HashTableIterator *hti);
 
 #endif 

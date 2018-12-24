@@ -1,8 +1,8 @@
 CC=clang
 EXE=test
 CFLAGS=-Werror -Wall 
-OBJ=HashTable.o
-CFILE=HashTable.c
+OBJ=hashtable.o
+CFILE=hashtable.c
 
 $(EXE): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^

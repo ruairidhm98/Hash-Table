@@ -20,15 +20,16 @@ struct bucket {
 };
 
 /* Structure that holds buckets */
-struct HashTable {
+struct hashtable {
     int size;
     int capacity;
     Bucket *buckets;
 };
 
 /* An iterator for the hash map */
-struct HashTable_iterator {
-
+struct hashtable_iterator {
+    unsigned long next;
+    HashTable *ht;
 };
 
 /* Hash function used to compute index into bucket array */
@@ -223,9 +224,60 @@ void ht_destroy(HashTable *ht) {
     }
 }
 
+/* Initialises hash map iterator */
+HashTableIterator *ht_iter_init(HashTable *ht) {
+
+    HashTableIterator *hti;
+
+    hti = (HashTableIterator *) malloc(sizeof(HashTableIterator));  
+    if (!hti) {
+        fprintf(stderr, MALLOC_FAILURE);
+        free((void *) hti);
+        hti = NULL;
+        return hti;
+    }
+    hti -> next = 0;
+    hti -> ht = ht;
+
+    return hti;
+}  
+
+/* Returns the next available bucket in the hash table */
+Bucket *ht_iter_next(HashTableIterator *hti) {
+
+    Bucket *bucket, *buckets;
+    int i, size, capacity;
+
+    buckets = hti -> ht -> buckets;
+    capacity = hti -> ht -> capacity;
+    size = hti -> ht -> size;
+    bucket = NULL;
+    if (size) 
+        /* Find the first available bucket starting at index hti -> next */
+        for (i = hti -> next; i < capacity; i++)
+            /* 
+             * Bucket has been found, update the value of next and set this value
+             * to bucket and then break so we can return
+             */
+            if (i != capacity)
+                if (buckets[i].key) {  
+                    hti -> next = i+1;
+                    bucket = &buckets[i];
+                    break;
+                }
+
+    return bucket;
+}
+
+/* Destorys an iterator object */
+void ht_iter_destroy(HashTableIterator *hti) { free((void *) hti); }
+
+
 int main() {
 
+    HashTableIterator *hti;
     HashTable *ht;
+    Bucket *temp;
     char **keys;
     int i;
 
@@ -237,11 +289,13 @@ int main() {
     ht_put(ht, "theree", 4);
     ht_put(ht, "th", 3);
     ht_print(ht);
-    keys = ht_keys(ht);
-    for (i = 0; i < ht -> size; i++) printf("%s\n", keys[i]);
+    hti = ht_iter_init(ht);
+    for (i = 0; i < ht -> size; i++) {
+        temp = ht_iter_next(hti);
+        printf("%s %d\n", temp -> key, temp -> value);
+    }
     ht_destroy(ht);
-    free((void *) keys);
-    for (i = 0; i < ht -> size; i++) free((void *) keys[i]);
+    ht_iter_destroy(hti);
 
     return 0;
 }
