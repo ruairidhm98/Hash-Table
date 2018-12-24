@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include "tshashtable.h"
 
+#define INVALID_ARGS "Error: command line arguments entered are wrong\n"
 #define COND_ERROR     "Error: condition variable failed to create\n"
 #define MALLOC_ERROR   "Error: memory allocation failed\n"
 #define MUTEX_ERROR    "Error: mutex failed ot create\n"
@@ -128,7 +129,6 @@ int ht_put(TSHashTable *ht, char *key, int value) {
     }
     newBucket.key = key;
     newBucket.value = value;
-    
     /* Compute the index */
     idx = (int) hash_function(key, ht -> capacity);
     tempKey = ht -> buckets[idx].key;
@@ -360,32 +360,3 @@ void ht_iter_destroy(TSHashTableIterator *hti) {
         hti = NULL;
     }
 }
-
-
-int main() {
-
-    TSHashTableIterator *hti;
-    TSHashTable *ht;
-    Bucket *temp;
-    char **keys;
-    int i;
-
-    ht = ht_init(10);
-    ht_put(ht, "hello", 1);
-    ht_put(ht, "there", 2);
-    ht_put(ht, "ther", 6);
-    ht_put(ht, "the", 5);
-    ht_put(ht, "theree", 4);
-    ht_put(ht, "th", 3);
-    ht_print(ht);
-    hti = ht_iter_init(ht);
-    for (i = 0; i < ht -> size; i++) {
-        temp = ht_iter_next(hti);
-        printf("%s %d\n", temp -> key, temp -> value);
-    }
-    ht_destroy(ht);
-    ht_iter_destroy(hti);
-
-    return 0;
-}
-
