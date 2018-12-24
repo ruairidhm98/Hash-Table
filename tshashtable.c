@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include "tshashtable.h"
 
-#define INVALID_ARGS "Error: command line arguments entered are wrong\n"
+#define INVALID_ARGS   "Error: command line arguments entered are wrong\n"
 #define COND_ERROR     "Error: condition variable failed to create\n"
 #define MALLOC_ERROR   "Error: memory allocation failed\n"
 #define MUTEX_ERROR    "Error: mutex failed ot create\n"
