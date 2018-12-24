@@ -22,6 +22,11 @@ struct hashmap {
     Bucket *buckets;
 };
 
+/* An iterator for the hash map */
+struct hashmap_iterator {
+
+};
+
 /* Hash function used to compute index into bucket array */
 static unsigned long hash_function(char *key, int capacity) {
     
@@ -171,6 +176,9 @@ void ht_print(HashMap *ht) {
     printf("]\n");
     
 }
+
+/* Returns true if the hash table is empty */
+int ht_is_empty(HashMap *ht) { return ht ? ht -> size == 0 : 0; }
 
 /* Destroys a hash table objects */
 void ht_destroy(HashMap *ht) {
