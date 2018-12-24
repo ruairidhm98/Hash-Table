@@ -1,5 +1,5 @@
 /************************************************
- * Thread safe TSHashTable which maps a string to an int        *
+ * Thread safe TSHashTable which maps a string to an int  *
  * Uses linear probing for collision handling   *
  *                                              *
  ************************************************/
@@ -127,36 +127,38 @@ int ht_put(TSHashTable *ht, char *key, int value) {
         printf("== Hash Table is full ==");
         pthread_cond_wait(&(ht -> insert), &(ht -> mutex));
     }
-    newBucket.key = key;
-    newBucket.value = value;
-    /* Compute the index */
-    idx = (int) hash_function(key, ht -> capacity);
-    tempKey = ht -> buckets[idx].key;
-    /* If the space is empty, insert into the array and we are done */
-    if (!tempKey) {
-        ht -> buckets[idx].key = key;
-        ht -> buckets[idx].value = value;
-    }
-    /* If there is a duplicate key, then overwrite it */
-    else if (!strcmp(tempKey, key)) ht -> buckets[idx].value = value;
-    /* The space is already taken, so do a linear search to find the next free space */
-    else {
-        while(1) {
-            /* Move along 1 (or start from the beginning) */
-            idx = (idx + 1) % ht -> capacity;
-            /* Free space has been found */
-            if (!ht -> buckets[idx].key) {
-                ht -> buckets[idx].key = key;
-                ht -> buckets[idx].value = value;
-                break;
-            }
+    if (ht -> size < ht -> capacity) {
+        newBucket.key = key;
+        newBucket.value = value;
+        /* Compute the index */
+        idx = (int) hash_function(key, ht -> capacity);
+        tempKey = ht -> buckets[idx].key;
+        /* If the space is empty, insert into the array and we are done */
+        if (!tempKey) {
+            ht -> buckets[idx].key = key;
+            ht -> buckets[idx].value = value;
         }
+        /* If there is a duplicate key, then overwrite it */
+        else if (!strcmp(tempKey, key)) ht -> buckets[idx].value = value;
+        /* The space is already taken, so do a linear search to find the next free space */
+        else {
+            while(1) {
+                /* Move along 1 (or start from the beginning) */
+                idx = (idx + 1) % ht -> capacity;
+                /* Free space has been found */
+                if (!ht -> buckets[idx].key) {
+                    ht -> buckets[idx].key = key;
+                    ht -> buckets[idx].value = value;
+                    break;
+                }
+            }
 
+        }
+        ht -> size++;
+        pthread_cond_signal(&(ht->delete));
     }
-    ht -> size++;
     pthread_mutex_unlock(&(ht -> mutex));
-    pthread_cond_signal(&(ht -> delete));
-
+    
     return 1;
 }
 
@@ -176,33 +178,36 @@ int ht_remove_entry(TSHashTable *ht, char *key) {
         printf("== Hash Table is empty ==");
         pthread_cond_wait(&(ht -> delete), &(ht -> mutex));
     }
-    idx = (int) hash_function(key, ht -> capacity);
-    tempKey = ht -> buckets[idx].key;
-    /* Bucket has been found from hash function, just set key to NULL */
-    if (tempKey && !strcmp(key, tempKey)) {
-        ht -> buckets[idx].key = NULL;
-        ht -> size--;
-    }
-    /* Else we must search for this key */
-    else {
-        tempidx = idx;
-        while (1) {
-            idx = (idx + 1) % ht -> capacity;
-            tempKey = ht -> buckets[idx].key;
-            if (tempKey) {
-                /* We have found the key */
-                if (!strcmp(key, tempKey)) {
-                    ht -> buckets[idx].key = NULL;
-                    ht -> size--;
+    if (ht -> size) {
+        idx = (int) hash_function(key, ht -> capacity);
+        tempKey = ht -> buckets[idx].key;
+        /* Bucket has been found from hash function, just set key to NULL */
+        if (tempKey && !strcmp(key, tempKey)) {
+            ht -> buckets[idx].key = NULL;
+            ht -> size--;
+        }
+        /* Else we must search for this key */
+        else {
+            tempidx = idx;
+            while (1) {
+                idx = (idx + 1) % ht -> capacity;
+                tempKey = ht -> buckets[idx].key;
+                if (tempKey) {
+                    /* We have found the key */
+                    if (!strcmp(key, tempKey)) {
+                        ht -> buckets[idx].key = NULL;
+                        ht -> size--;
+                        break;
+                    }
+                }
+                /* We are back to where we started, so key must not exist in table */
+                if (tempidx == idx) {
+                    fprintf(stderr, KEY_ERROR);
                     break;
                 }
             }
-            /* We are back to where we started, so key must not exist in table */
-            if (tempidx == idx) {
-                fprintf(stderr, KEY_ERROR);
-                break;
-            }
         }
+        pthread_cond_signal(&(ht->insert));
     }
     pthread_mutex_unlock(&(ht -> mutex));
 
