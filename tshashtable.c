@@ -147,7 +147,7 @@ int ht_put(TSHashTable *ht, char *key, int value) {
                 /* Move along 1 (or start from the beginning) */
                 idx = (idx + 1) % ht -> capacity;
                 /* Free space has been found */
-                if (!ht -> buckets[idx].key) {
+                if (!(ht -> buckets[idx].key)) {
                     ht -> buckets[idx].key = key;
                     ht -> buckets[idx].value = value;
                     break;
@@ -156,7 +156,7 @@ int ht_put(TSHashTable *ht, char *key, int value) {
 
         }
         ht -> size++;
-        pthread_cond_signal(&(ht->delete));
+        pthread_cond_signal(&(ht -> delete));
     }
     pthread_mutex_unlock(&(ht -> mutex));
     
@@ -193,14 +193,14 @@ int ht_remove_entry(TSHashTable *ht, char *key) {
             while (1) {
                 idx = (idx + 1) % ht -> capacity;
                 tempKey = ht -> buckets[idx].key;
-                if (tempKey) {
+                if (tempKey) 
                     /* We have found the key */
                     if (!strcmp(key, tempKey)) {
                         ht -> buckets[idx].key = NULL;
                         ht -> size--;
                         break;
                     }
-                }
+                
                 /* We are back to where we started, so key must not exist in table */
                 if (tempidx == idx) {
                     fprintf(stderr, KEY_ERROR);
@@ -261,6 +261,7 @@ void ht_print(TSHashTable *ht) {
     printf("[");
     if (!ht) {
         fprintf(stderr, NULL_VALUE);
+        return;
     }
     pthread_mutex_lock(&(ht -> mutex));
     if (!ht -> size) {
@@ -347,7 +348,7 @@ Bucket *ht_iter_next(TSHashTableIterator *hti) {
              * Bucket has been found, update the value of next and set this value
              * to bucket and then break so we can return
              */
-            if (i != capacity)
+            if (i < capacity)
                 if (buckets[i].key) {  
                     hti -> next = i+1;
                     bucket = &buckets[i];
