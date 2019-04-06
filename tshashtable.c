@@ -40,7 +40,6 @@ struct ts_hashtable {
 struct ts_hashtable_iterator {
   TSHashTable *ht;       // the hash table
   unsigned long next;    // index of where to start from next in the hash table
-  pthread_mutex_t mutex; // mutex used to protect shared data
 };
 
 /* Hash function used to compute index into bucket array */
@@ -303,8 +302,7 @@ TSHashTableIterator *ht_iter_init(TSHashTable *ht) {
   }
   hti->next = 0;
   hti->ht = ht;
-  hti->mutex = ht->mutex;
-  pthread_mutex_lock(&(hti->mutex));
+  pthread_mutex_lock(&(ht->mutex));
   return hti;
 }
 
@@ -335,8 +333,7 @@ Bucket *ht_iter_next(TSHashTableIterator *hti) {
 /* Destorys an iterator object */
 void ht_iter_destroy(TSHashTableIterator *hti) {
   if (hti) {
-    pthread_mutex_unlock(&(hti->mutex));
-    pthread_mutex_destroy(&(hti->mutex));
+    pthread_mutex_unlock(&(hti->ht->mutex));
     free((void *)hti);
     hti = NULL;
   }
